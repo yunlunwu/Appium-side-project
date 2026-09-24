@@ -45,9 +45,11 @@ export const config: WebdriverIO.Config = {
 
   logLevel: 'warn',
   bail: 0,
-  waitforTimeout: 15_000,
-  connectionRetryTimeout: 180_000,
-  connectionRetryCount: 2,
+  waitforTimeout: 20_000,
+  // Session creation on a cold emulator installs the UiAutomator2 server and
+  // the app under test, which can take several minutes on a busy machine.
+  connectionRetryTimeout: 600_000,
+  connectionRetryCount: 1,
 
   // Boots an Appium server for the duration of the run - no separate terminal needed.
   services: [
