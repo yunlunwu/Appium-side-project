@@ -1,4 +1,4 @@
-# Appium Side Project — Android E2E Automation
+# Android E2E Automation
 
 Mobile UI automation built with **Appium 3 + WebdriverIO 9 + TypeScript**, running against a sample app on an Android emulator.
 
