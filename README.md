@@ -1,176 +1,178 @@
-# Appium Side Project — Android E2E 自動化測試
+# Appium Side Project — Android E2E Automation
 
-用 **Appium 3 + WebdriverIO 9 + TypeScript** 對 Android 模擬器上的範例 App 做 UI 自動化測試的小作品。
+Mobile UI automation built with **Appium 3 + WebdriverIO 9 + TypeScript**, running against a sample app on an Android emulator.
 
-測試對象是 Appium 官方維護的範例 App [**ApiDemos**](https://github.com/appium/android-apidemos)，APK 直接放在 repo 裡（`apps/`），所以 clone 下來不需要額外找 App 就能跑。
-
----
-
-## 技術棧
-
-| 項目 | 選用 | 說明 |
-|------|------|------|
-| 自動化引擎 | Appium 3 + UiAutomator2 driver | 業界標準的行動裝置自動化框架 |
-| 測試框架 | WebdriverIO 9 + Mocha | WDIO 提供 `expect` 斷言、重試、報告 |
-| 語言 | TypeScript（strict） | Page Object 有型別，重構安全 |
-| 設計模式 | Page Object Model | 選擇器集中管理，spec 只描述行為 |
-| 裝置 | Android Emulator（Pixel 7, API 35, arm64-v8a） | Apple Silicon 原生 |
+The app under test is [**ApiDemos**](https://github.com/appium/android-apidemos), the sample app Appium maintains. The APK is committed to this repo (`apps/`), so a fresh clone can run the suite without hunting down a build first.
 
 ---
 
-## 專案結構
+## Stack
+
+| Area | Choice | Why |
+|------|--------|-----|
+| Automation engine | Appium 3 + UiAutomator2 driver | The industry-standard mobile automation stack |
+| Test framework | WebdriverIO 9 + Mocha | Gives us `expect` assertions, retries and reporting |
+| Language | TypeScript (strict) | Typed page objects, so refactors are safe |
+| Pattern | Page Object Model | Selectors live in one place; specs describe behaviour only |
+| Device | Android emulator (Pixel 7, API 35, arm64-v8a) | Runs natively on Apple Silicon |
+
+---
+
+## Layout
 
 ```
 .
 ├── apps/
-│   └── ApiDemos-debug.apk        # 受測 App（每次執行都會重新安裝）
+│   └── ApiDemos-debug.apk        # App under test (reinstalled on every run)
 ├── scripts/
-│   └── start-emulator.sh         # 開模擬器並等到真的可用為止
+│   └── start-emulator.sh         # Boots the emulator and waits until it is usable
 ├── test/
 │   ├── support/
-│   │   └── preflight.ts          # 跑測試前檢查裝置與 port，失敗立刻報錯
+│   │   └── preflight.ts          # Resolves the toolchain; fails fast if the machine isn't ready
 │   ├── pageobjects/
-│   │   ├── base.page.ts          # 共用選擇器 helper（id / text / UiScrollable）
-│   │   ├── home.page.ts          # ApiDemos 首頁分類清單
-│   │   └── controls.page.ts      # Views > Controls > 1. Light Theme 表單頁
+│   │   ├── base.page.ts          # Shared selector helpers (id / text / UiScrollable)
+│   │   ├── home.page.ts          # The ApiDemos category list
+│   │   └── controls.page.ts      # Views > Controls > 1. Light Theme
 │   └── specs/
-│       ├── navigation.e2e.ts     # 導覽流程測試
-│       └── controls.e2e.ts       # 表單元件互動測試
-├── wdio.conf.ts                  # WDIO 設定（含自動啟動 Appium server）
+│       ├── navigation.e2e.ts     # Navigation flows
+│       └── controls.e2e.ts       # Form widget interaction
+├── wdio.conf.ts                  # WDIO config (also starts the Appium server)
 └── .github/workflows/
-    └── android-e2e.yml           # CI：在 GitHub Runner 上開模擬器跑測試
+    └── android-e2e.yml           # CI: runs the suite on an emulator runner
 ```
 
 ---
 
-## 測試內容
+## What is covered
 
-### `navigation.e2e.ts` — 導覽流程
+### `navigation.e2e.ts` — navigation
 
-| 測試 | 驗證重點 |
-|------|----------|
-| 首頁顯示所有分類 | 11 個分類（Accessibility ~ Views）都出現在清單上 |
-| 逐層進入 Controls 範例 | `Views → Controls → 1. Light Theme`，標題為 `Views/Controls/1. Light Theme` |
-| 返回鍵回到上一層 | 按實體返回鍵後回到主題清單 |
+| Test | Asserts |
+|------|---------|
+| Home screen lists every category | All 11 categories (Accessibility through Views) are displayed |
+| Drill down into the Controls demo | `Views → Controls → 1. Light Theme` opens, titled `Views/Controls/1. Light Theme` |
+| Device back button | Returns to the theme list it came from |
 
-### `controls.e2e.ts` — 表單元件互動
+### `controls.e2e.ts` — form widgets
 
-| 測試 | 驗證重點 |
-|------|----------|
-| 文字輸入 | 輸入文字後 EditText 內容正確 |
-| Checkbox 獨立切換 | 勾選 checkbox 1 不會影響 checkbox 2 |
-| Radio 單選行為 | 選 radio 2 後 radio 1 自動取消 |
-| ToggleButton | 由 `OFF` 切換為 `ON` |
-| Spinner 下拉選單 | 預設 `Mercury`，選擇後變成 `Jupiter` |
-| 停用狀態的按鈕 | 一個 Save 可點、另一個為 disabled |
+| Test | Asserts |
+|------|---------|
+| Text entry | The edit field keeps what was typed into it |
+| Checkboxes | Ticking checkbox 1 leaves checkbox 2 alone |
+| Radio group | Selecting radio 2 clears radio 1 |
+| Toggle button | Flips from `OFF` to `ON` |
+| Spinner | Defaults to `Mercury`; selecting `Jupiter` sticks |
+| Disabled state | One Save button is enabled, the other is disabled |
 
-測試失敗時會自動截圖到 `logs/`。
+Failing tests screenshot themselves into `logs/`.
 
 ---
 
-## 環境需求
+## Requirements
 
 - Node.js 20+
 - JDK 17
-- Android SDK（platform-tools、emulator、API 35 system image）
+- Android SDK (platform-tools, emulator, an API 35 system image)
 
-### macOS（Apple Silicon）安裝步驟
+### Setup on macOS (Apple Silicon)
 
-> ⚠️ M1/M2/M3 Mac 必須使用 **arm64** 的 JDK 與 **arm64-v8a** system image，x86 image 無法執行。
+> ⚠️ On an M-series Mac you need an **arm64** JDK and an **arm64-v8a** system image. x86 images will not run.
 
 ```bash
-# 1. JDK 17（arm64）
+# 1. JDK 17 (arm64)
 brew install --cask temurin@17
-# 或手動下載 https://adoptium.net/ 的 macOS aarch64 版本
+# or download the macOS aarch64 build from https://adoptium.net/
 
 # 2. Android SDK command-line tools
-#    下載 https://developer.android.com/studio#command-line-tools-only
-#    解壓到 $ANDROID_HOME/cmdline-tools/latest
+#    Get them from https://developer.android.com/studio#command-line-tools-only
+#    and unpack into $ANDROID_HOME/cmdline-tools/latest
 
-# 3. 環境變數（選用）
-#    測試本身不需要這些 —— 專案會自動找到 SDK 與 JDK。
-#    但手動下 adb / sdkmanager 指令時還是方便，可加進 ~/.zshrc：
+# 3. Environment variables (optional)
+#    The test suite does not need these — it locates the SDK and JDK itself.
+#    They are still handy for running adb / sdkmanager by hand, so consider
+#    adding them to ~/.zshrc:
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home
 export ANDROID_HOME=$HOME/Library/Android/sdk
 export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
 
-# 4. 安裝 SDK 套件與 arm64 system image
+# 4. Install the SDK packages and an arm64 system image
 sdkmanager --licenses
 sdkmanager "platform-tools" "emulator" "platforms;android-35" \
            "build-tools;35.0.1" "system-images;android-35;google_apis;arm64-v8a"
 
-# 5. 建立 AVD
+# 5. Create the AVD
 avdmanager create avd -n Pixel_7_API_35 \
   -k "system-images;android-35;google_apis;arm64-v8a" -d pixel_7
 ```
 
 ---
 
-## 執行測試
+## Running the tests
 
 ```bash
 npm install
 
-# 開模擬器（會等到 sys.boot_completed 才返回；預設 headless）
+# Boot the emulator (returns only once sys.boot_completed is set; headless by default)
 npm run emulator
 
-# 想看畫面就關掉 headless（模式不符時會自動重開模擬器）
+# Run windowed instead, to watch the tests
+# (restarts a running emulator if it is in the wrong mode)
 HEADLESS=0 npm run emulator
 
-# 不要自動重開、只回報模式不符
+# Report a mode mismatch instead of restarting
 RESTART=0 HEADLESS=0 npm run emulator
 
-# 跑全部測試（Appium server 由 WDIO 自動啟動，不必另開終端機）
+# Run everything — WDIO starts the Appium server itself, no second terminal needed
 npm test
 
-# 只跑某一組
+# Run one suite
 npm run test:smoke      # navigation.e2e.ts
 npx wdio run ./wdio.conf.ts --suite controls
 
-# 型別檢查
+# Type-check
 npm run typecheck
 ```
 
 ---
 
-## 設計說明
+## Design notes
 
-**Appium server 由 WDIO 託管。** `wdio.conf.ts` 使用 `@wdio/appium-service`，執行 `npm test` 時會自動起一個 Appium server 並在結束後關閉。
+**WDIO hosts the Appium server.** `wdio.conf.ts` uses `@wdio/appium-service`, so `npm test` starts an Appium server for the run and shuts it down afterwards.
 
-> 注意：不要在 service 的 `args` 裡把 `logLevel` 調低。`@wdio/appium-service` 是靠解析 Appium 的啟動訊息來判斷 server 就緒，壓低 log level 會讓它一直等到逾時。
+> Do not lower `logLevel` in the service's `args`. `@wdio/appium-service` detects that the server is ready by parsing Appium's own startup banner — quieten it and the service waits until it times out.
 
-**每個測試都從乾淨狀態開始。** `beforeEach` 會 `terminateApp` 再 `activateApp`，所以測試之間不會互相污染，順序也不影響結果。
+**Every test starts from a clean app.** `beforeEach` calls `terminateApp` then `activateApp`, so tests cannot pollute one another and the order they run in doesn't change the result.
 
-**選擇器策略。** 優先用 `resource-id`（最穩定），清單項目用 text，長清單則用 `UiScrollable` 捲到畫面內再操作。
+**Selector strategy.** `resource-id` wherever there is one (most stable), visible text for list entries, and `UiScrollable` to scroll an entry into view before touching it in the long menus.
 
-**Headless 模擬器快很多。** 同一台 M1 Mac、同一組測試實測：headless 全套 **56 秒**，帶視窗 **2 分 38 秒**（navigation 那組從 11 秒變成 1 分 32 秒）。主機負載高時差距更誇張——曾量到帶視窗的 `adb shell echo` 要 6 秒，headless 只要 0.06 秒。所以跑測試一律 headless，要看畫面時才 `HEADLESS=0`。
+**Headless is much faster.** Measured on the same M1 Mac with the same suite: **56s** headless versus **2m 38s** windowed (the navigation spec alone goes from 11s to 1m 32s). Under heavy system load the gap is worse still — a windowed emulator was once measured at 6s for a single `adb shell echo`, against 0.06s headless. So run tests headless and reach for `HEADLESS=0` only when you want to watch.
 
-**`npm run emulator` 會尊重你要的模式。** 如果已經有模擬器在跑但模式不對（例如你下了 `HEADLESS=0` 但背景是 headless 的），腳本會**自動重開**成你要的模式，而不是默默沿用——這正是「下了 `HEADLESS=0` 卻看不到畫面」的原因。不想讓它重開就加 `RESTART=0`，它會報錯並保持原狀。
+**`npm run emulator` honours the mode you asked for.** If an emulator is already running in the other window mode, the script restarts it rather than silently reusing it — otherwise `HEADLESS=0` would appear to do nothing and no window would ever show up. Pass `RESTART=0` to have it report the mismatch and leave the running emulator alone.
 
-**工具鏈由專案自己解析，不依賴你的 shell。** Appium server 是測試行程的子行程，**沒有 `ANDROID_HOME`／`ANDROID_SDK_ROOT` 就拒絕建立 session**。[`test/support/preflight.ts`](test/support/preflight.ts) 在設定檔載入時就找出 SDK 與 JDK 並寫進 `process.env`，子行程自然繼承。所以在「開啟時間早於你改 `.zshrc` 的舊終端機」、IDE 的 runner、或 CI 上，`npm test` 行為都一致。已驗證：把 `ANDROID_HOME`、`ANDROID_SDK_ROOT`、`JAVA_HOME` 全部清掉、`adb` 也不在 `PATH` 的情況下，整套測試照跑（58 秒全綠）。你自己有設的話仍然優先採用。
+**The toolchain is resolved in-process, not from your shell.** The Appium server runs as a child of the test process and **refuses to create a session unless `ANDROID_HOME` or `ANDROID_SDK_ROOT` is set in its environment**. [`test/support/preflight.ts`](test/support/preflight.ts) locates the SDK and the JDK as the config loads and writes them into `process.env`, so every child inherits them. That keeps `npm test` behaving identically in a terminal older than your last `.zshrc` edit, in an IDE runner, and in CI. Verified with `ANDROID_HOME`, `ANDROID_SDK_ROOT` and `JAVA_HOME` all unset and `adb` off `PATH`: the full suite still runs green in 58s. An explicitly set `ANDROID_HOME` always wins.
 
-**測試前會做 pre-flight 檢查。** `onPrepare` 會檢查 SDK、JDK、開好機的裝置、以及 4723 有沒有被舊的 Appium server 佔住，有問題就在 **5 秒內**用人話報錯並中止。沒有這層檢查的話，這些狀況都只會表現成每個 spec 在 `POST /session` 失敗或卡到超時，看起來像測試壞掉，其實是機器還沒準備好。同時 session 會綁定實際抓到的 udid，避免多台裝置時跑錯機器。
+**Pre-flight checks run before the suite.** `onPrepare` verifies the SDK, the JDK, that a booted device is attached, and that port 4723 isn't still held by an Appium server from an earlier run. Anything missing aborts the run in about five seconds with a message that says what to do. Without that layer, each of these surfaces only as every spec failing or hanging on `POST /session` — which reads like a broken test suite when the real problem is a machine that isn't ready. Sessions are also pinned to the udid actually detected, so a second device can't quietly steal the run.
 
 ---
 
 ## CI
 
-`.github/workflows/android-e2e.yml` 使用 [`reactivecircus/android-emulator-runner`](https://github.com/ReactiveCircus/android-emulator-runner) 在 GitHub Runner 上開啟模擬器執行測試（Linux runner 用 x86_64 image + KVM 加速）。失敗時會把 `logs/` 的截圖上傳成 artifact。
+`.github/workflows/android-e2e.yml` runs the suite on [`reactivecircus/android-emulator-runner`](https://github.com/ReactiveCircus/android-emulator-runner) (Linux runners use an x86_64 image with KVM acceleration). On failure it uploads the screenshots from `logs/` as an artifact.
 
 ---
 
-## 疑難排解
+## Troubleshooting
 
-| 症狀 | 原因與處理 |
-|------|------------|
-| `Timeout: Appium did not start within expected time` | service `args` 的 log level 被調太低，移除即可 |
-| `Error getting device API level ... adbExec timed out` | 模擬器反應太慢（常見於記憶體不足）。關掉佔記憶體的程式，或調高 `appium:adbExecTimeout` |
-| 下了 `HEADLESS=0` 卻看不到視窗 | 舊版腳本偵測到有模擬器在跑就沿用、忽略 `HEADLESS`。現已修正為自動重開；若還遇到，`adb emu kill` 後重跑 |
-| 所有 spec 都失敗、`logs/` 裡沒有失敗截圖 | 代表是 **session 建立階段**就失敗（測試根本沒開始），不是測試邏輯壞掉。跑 `npm test` 看 pre-flight 的訊息 |
-| `Port 4723 is already in use` | 前一次執行留下的 Appium server 還活著：`pkill -f appium` |
-| `Neither ANDROID_HOME nor ANDROID_SDK_ROOT environment variable was exported` | 舊版靠 shell 的環境變數，在改 `.zshrc` 之前開的終端機就會踩到。現已改成由專案自行解析注入；若仍出現，代表 SDK 不在預設位置，設一個 `ANDROID_HOME` 即可 |
-| 模擬器開不起來 / 非常慢 | 1) Apple Silicon 上請確認用的是 `arm64-v8a` image，不是 `x86`；2) 改用 headless（預設）；3) 檢查 `uptime` 的 load average，主機被其他程式拖垮時模擬器會慢到無法使用 |
-| `adb: device not found` | 執行 `adb kill-server && adb start-server`，再確認 `adb devices` |
+| Symptom | Cause and fix |
+|---------|---------------|
+| `Timeout: Appium did not start within expected time` | The Appium log level in the service `args` is too low for the service to detect startup. Remove it. |
+| `Error getting device API level ... adbExec timed out` | The emulator is responding too slowly, usually under memory pressure. Close what's hogging memory, or raise `appium:adbExecTimeout`. |
+| `Neither ANDROID_HOME nor ANDROID_SDK_ROOT environment variable was exported` | The SDK isn't in a standard location, so it couldn't be auto-detected. Set `ANDROID_HOME` and re-run. |
+| `Port 4723 is already in use` | An Appium server from an earlier run is still alive: `pkill -f appium`. |
+| `HEADLESS=0` shows no window | An emulator is already running headless and `RESTART=0` is set. Drop `RESTART=0`, or run `adb emu kill` first. |
+| Every spec fails and `logs/` has no screenshots | The failure happened during **session creation**, before any test ran — so it is the environment, not the test logic. The pre-flight output will name the cause. |
+| Emulator won't start, or is unusably slow | 1) On Apple Silicon, confirm the image is `arm64-v8a` and not `x86`; 2) run headless (the default); 3) check `uptime` — a machine under heavy load will starve the emulator. |
+| `adb: device not found` | `adb kill-server && adb start-server`, then confirm with `adb devices`. |
 
 ---
 
