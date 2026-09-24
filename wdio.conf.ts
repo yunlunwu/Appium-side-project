@@ -1,9 +1,13 @@
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import type { Options } from '@wdio/types'
+import { APPIUM_PORT, attachedDevice, preflight } from './test/support/preflight.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const APP_PATH = path.join(__dirname, 'apps', 'ApiDemos-debug.apk')
+
+// Pin the session to whichever device is actually attached, so a second
+// emulator or a plugged-in phone can't quietly steal the run.
+const UDID = attachedDevice()
 
 export const config: WebdriverIO.Config = {
   runner: 'local',
@@ -23,6 +27,7 @@ export const config: WebdriverIO.Config = {
       platformName: 'Android',
       'appium:automationName': 'UiAutomator2',
       'appium:deviceName': process.env.ANDROID_DEVICE_NAME ?? 'Android Emulator',
+      ...(UDID ? { 'appium:udid': UDID } : {}),
       // Install a known-good build of the app under test on every run so the
       // suite never depends on whatever happens to be on the device already.
       'appium:app': APP_PATH,
@@ -60,14 +65,14 @@ export const config: WebdriverIO.Config = {
         // detects server startup by parsing Appium's own stdout banner.
         args: {
           address: '127.0.0.1',
-          port: 4723,
+          port: APPIUM_PORT,
           relaxedSecurity: true,
         },
         logPath: './logs',
       },
     ],
   ],
-  port: 4723,
+  port: APPIUM_PORT,
   path: '/',
 
   framework: 'mocha',
@@ -75,6 +80,11 @@ export const config: WebdriverIO.Config = {
   mochaOpts: {
     ui: 'bdd',
     timeout: 120_000,
+  },
+
+  // Runs once in the launcher, before any worker starts.
+  onPrepare: async function () {
+    await preflight()
   },
 
   afterTest: async function (test, _context, { passed }) {

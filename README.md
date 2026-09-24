@@ -27,6 +27,8 @@
 ├── scripts/
 │   └── start-emulator.sh         # 開模擬器並等到真的可用為止
 ├── test/
+│   ├── support/
+│   │   └── preflight.ts          # 跑測試前檢查裝置與 port，失敗立刻報錯
 │   ├── pageobjects/
 │   │   ├── base.page.ts          # 共用選擇器 helper（id / text / UiScrollable）
 │   │   ├── home.page.ts          # ApiDemos 首頁分類清單
@@ -110,8 +112,11 @@ npm install
 # 開模擬器（會等到 sys.boot_completed 才返回；預設 headless）
 npm run emulator
 
-# 想看畫面就關掉 headless
+# 想看畫面就關掉 headless（模式不符時會自動重開模擬器）
 HEADLESS=0 npm run emulator
+
+# 不要自動重開、只回報模式不符
+RESTART=0 HEADLESS=0 npm run emulator
 
 # 跑全部測試（Appium server 由 WDIO 自動啟動，不必另開終端機）
 npm test
@@ -136,7 +141,11 @@ npm run typecheck
 
 **選擇器策略。** 優先用 `resource-id`（最穩定），清單項目用 text，長清單則用 `UiScrollable` 捲到畫面內再操作。
 
-**Headless 模擬器快很多。** 實測在同一台 M1 Mac 上，帶視窗的模擬器 `adb shell echo` 要 6 秒，加上 `-no-window -gpu swiftshader_indirect` 之後降到 0.06 秒——快了約 100 倍。跑測試一律用 headless，要看畫面時才 `HEADLESS=0`。
+**Headless 模擬器快很多。** 同一台 M1 Mac、同一組測試實測：headless 全套 **56 秒**，帶視窗 **2 分 38 秒**（navigation 那組從 11 秒變成 1 分 32 秒）。主機負載高時差距更誇張——曾量到帶視窗的 `adb shell echo` 要 6 秒，headless 只要 0.06 秒。所以跑測試一律 headless，要看畫面時才 `HEADLESS=0`。
+
+**`npm run emulator` 會尊重你要的模式。** 如果已經有模擬器在跑但模式不對（例如你下了 `HEADLESS=0` 但背景是 headless 的），腳本會**自動重開**成你要的模式，而不是默默沿用——這正是「下了 `HEADLESS=0` 卻看不到畫面」的原因。不想讓它重開就加 `RESTART=0`，它會報錯並保持原狀。
+
+**測試前會做 pre-flight 檢查。** [`test/support/preflight.ts`](test/support/preflight.ts) 在 `onPrepare` 檢查「有沒有開好機的裝置」和「4723 有沒有被舊的 Appium server 佔住」，有問題就在 **5 秒內**用人話報錯並中止。沒有這層檢查的話，這兩種狀況都只會表現成每個 spec 在 `POST /session` 卡十幾分鐘後超時，看起來像測試壞掉，其實是機器還沒準備好。同時 session 會綁定實際抓到的 udid，避免多台裝置時跑錯機器。
 
 ---
 
@@ -152,6 +161,9 @@ npm run typecheck
 |------|------------|
 | `Timeout: Appium did not start within expected time` | service `args` 的 log level 被調太低，移除即可 |
 | `Error getting device API level ... adbExec timed out` | 模擬器反應太慢（常見於記憶體不足）。關掉佔記憶體的程式，或調高 `appium:adbExecTimeout` |
+| 下了 `HEADLESS=0` 卻看不到視窗 | 舊版腳本偵測到有模擬器在跑就沿用、忽略 `HEADLESS`。現已修正為自動重開；若還遇到，`adb emu kill` 後重跑 |
+| 所有 spec 都失敗、`logs/` 裡沒有失敗截圖 | 代表是 **session 建立階段**就失敗（測試根本沒開始），不是測試邏輯壞掉。跑 `npm test` 看 pre-flight 的訊息 |
+| `Port 4723 is already in use` | 前一次執行留下的 Appium server 還活著：`pkill -f appium` |
 | 模擬器開不起來 / 非常慢 | 1) Apple Silicon 上請確認用的是 `arm64-v8a` image，不是 `x86`；2) 改用 headless（預設）；3) 檢查 `uptime` 的 load average，主機被其他程式拖垮時模擬器會慢到無法使用 |
 | `adb: device not found` | 執行 `adb kill-server && adb start-server`，再確認 `adb devices` |
 
