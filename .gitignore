@@ -1,0 +1,9 @@
+node_modules/
+logs/
+*.log
+.appium/
+.cache/
+coverage/
+.DS_Store
+.idea/
+.vscode/
