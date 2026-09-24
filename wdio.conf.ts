@@ -1,9 +1,23 @@
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
-import { APPIUM_PORT, attachedDevice, preflight } from './test/support/preflight.js'
+import {
+  APPIUM_PORT,
+  attachedDevice,
+  ensureAndroidHome,
+  ensureJavaHome,
+  preflight,
+} from './test/support/preflight.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const APP_PATH = path.join(__dirname, 'apps', 'ApiDemos-debug.apk')
+
+// Resolve the toolchain at module load, before anything is spawned: the Appium
+// server runs as a child of this process and refuses to create a session unless
+// ANDROID_HOME (or ANDROID_SDK_ROOT) is set in its environment. Doing it here
+// rather than relying on the user's shell profile means `npm test` behaves the
+// same in a stale terminal, an IDE runner and CI. preflight() reports failures.
+ensureAndroidHome()
+ensureJavaHome()
 
 // Pin the session to whichever device is actually attached, so a second
 // emulator or a plugged-in phone can't quietly steal the run.

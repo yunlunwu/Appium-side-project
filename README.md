@@ -87,7 +87,9 @@ brew install --cask temurin@17
 #    下載 https://developer.android.com/studio#command-line-tools-only
 #    解壓到 $ANDROID_HOME/cmdline-tools/latest
 
-# 3. 環境變數（加進 ~/.zshrc）
+# 3. 環境變數（選用）
+#    測試本身不需要這些 —— 專案會自動找到 SDK 與 JDK。
+#    但手動下 adb / sdkmanager 指令時還是方便，可加進 ~/.zshrc：
 export JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home
 export ANDROID_HOME=$HOME/Library/Android/sdk
 export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
@@ -145,7 +147,9 @@ npm run typecheck
 
 **`npm run emulator` 會尊重你要的模式。** 如果已經有模擬器在跑但模式不對（例如你下了 `HEADLESS=0` 但背景是 headless 的），腳本會**自動重開**成你要的模式，而不是默默沿用——這正是「下了 `HEADLESS=0` 卻看不到畫面」的原因。不想讓它重開就加 `RESTART=0`，它會報錯並保持原狀。
 
-**測試前會做 pre-flight 檢查。** [`test/support/preflight.ts`](test/support/preflight.ts) 在 `onPrepare` 檢查「有沒有開好機的裝置」和「4723 有沒有被舊的 Appium server 佔住」，有問題就在 **5 秒內**用人話報錯並中止。沒有這層檢查的話，這兩種狀況都只會表現成每個 spec 在 `POST /session` 卡十幾分鐘後超時，看起來像測試壞掉，其實是機器還沒準備好。同時 session 會綁定實際抓到的 udid，避免多台裝置時跑錯機器。
+**工具鏈由專案自己解析，不依賴你的 shell。** Appium server 是測試行程的子行程，**沒有 `ANDROID_HOME`／`ANDROID_SDK_ROOT` 就拒絕建立 session**。[`test/support/preflight.ts`](test/support/preflight.ts) 在設定檔載入時就找出 SDK 與 JDK 並寫進 `process.env`，子行程自然繼承。所以在「開啟時間早於你改 `.zshrc` 的舊終端機」、IDE 的 runner、或 CI 上，`npm test` 行為都一致。已驗證：把 `ANDROID_HOME`、`ANDROID_SDK_ROOT`、`JAVA_HOME` 全部清掉、`adb` 也不在 `PATH` 的情況下，整套測試照跑（58 秒全綠）。你自己有設的話仍然優先採用。
+
+**測試前會做 pre-flight 檢查。** `onPrepare` 會檢查 SDK、JDK、開好機的裝置、以及 4723 有沒有被舊的 Appium server 佔住，有問題就在 **5 秒內**用人話報錯並中止。沒有這層檢查的話，這些狀況都只會表現成每個 spec 在 `POST /session` 失敗或卡到超時，看起來像測試壞掉，其實是機器還沒準備好。同時 session 會綁定實際抓到的 udid，避免多台裝置時跑錯機器。
 
 ---
 
@@ -164,6 +168,7 @@ npm run typecheck
 | 下了 `HEADLESS=0` 卻看不到視窗 | 舊版腳本偵測到有模擬器在跑就沿用、忽略 `HEADLESS`。現已修正為自動重開；若還遇到，`adb emu kill` 後重跑 |
 | 所有 spec 都失敗、`logs/` 裡沒有失敗截圖 | 代表是 **session 建立階段**就失敗（測試根本沒開始），不是測試邏輯壞掉。跑 `npm test` 看 pre-flight 的訊息 |
 | `Port 4723 is already in use` | 前一次執行留下的 Appium server 還活著：`pkill -f appium` |
+| `Neither ANDROID_HOME nor ANDROID_SDK_ROOT environment variable was exported` | 舊版靠 shell 的環境變數，在改 `.zshrc` 之前開的終端機就會踩到。現已改成由專案自行解析注入；若仍出現，代表 SDK 不在預設位置，設一個 `ANDROID_HOME` 即可 |
 | 模擬器開不起來 / 非常慢 | 1) Apple Silicon 上請確認用的是 `arm64-v8a` image，不是 `x86`；2) 改用 headless（預設）；3) 檢查 `uptime` 的 load average，主機被其他程式拖垮時模擬器會慢到無法使用 |
 | `adb: device not found` | 執行 `adb kill-server && adb start-server`，再確認 `adb devices` |
 
