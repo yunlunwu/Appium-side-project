@@ -107,8 +107,11 @@ avdmanager create avd -n Pixel_7_API_35 \
 ```bash
 npm install
 
-# 開模擬器（會等到 sys.boot_completed 才返回）
+# 開模擬器（會等到 sys.boot_completed 才返回；預設 headless）
 npm run emulator
+
+# 想看畫面就關掉 headless
+HEADLESS=0 npm run emulator
 
 # 跑全部測試（Appium server 由 WDIO 自動啟動，不必另開終端機）
 npm test
@@ -133,6 +136,8 @@ npm run typecheck
 
 **選擇器策略。** 優先用 `resource-id`（最穩定），清單項目用 text，長清單則用 `UiScrollable` 捲到畫面內再操作。
 
+**Headless 模擬器快很多。** 實測在同一台 M1 Mac 上，帶視窗的模擬器 `adb shell echo` 要 6 秒，加上 `-no-window -gpu swiftshader_indirect` 之後降到 0.06 秒——快了約 100 倍。跑測試一律用 headless，要看畫面時才 `HEADLESS=0`。
+
 ---
 
 ## CI
@@ -147,7 +152,7 @@ npm run typecheck
 |------|------------|
 | `Timeout: Appium did not start within expected time` | service `args` 的 log level 被調太低，移除即可 |
 | `Error getting device API level ... adbExec timed out` | 模擬器反應太慢（常見於記憶體不足）。關掉佔記憶體的程式，或調高 `appium:adbExecTimeout` |
-| 模擬器開不起來 / 非常慢 | Apple Silicon 上請確認用的是 `arm64-v8a` image，不是 `x86` |
+| 模擬器開不起來 / 非常慢 | 1) Apple Silicon 上請確認用的是 `arm64-v8a` image，不是 `x86`；2) 改用 headless（預設）；3) 檢查 `uptime` 的 load average，主機被其他程式拖垮時模擬器會慢到無法使用 |
 | `adb: device not found` | 執行 `adb kill-server && adb start-server`，再確認 `adb devices` |
 
 ---
